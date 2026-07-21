@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ফলাফল অনুসন্ধান</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background-color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 450px;
+    }
+    h2 {
+      text-align: center;
+      color: #1a73e8;
+      margin-top: 0;
+      margin-bottom: 25px;
+    }
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 15px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus {
+      border-color: #1a73e8;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #1557b0;
+    }
+    .result-container {
+      margin-top: 20px;
+      display: none;
+      border-top: 2px solid #e0e0e0;
+      padding-top: 20px;
+    }
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 16px;
+      padding: 8px 10px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+    .result-item strong {
+      color: #555;
+    }
+    .result-item span {
+      font-weight: bold;
+      color: #222;
+    }
+    .status-pass {
+      color: #2e7d32 !important;
+    }
+    .error-msg {
+      color: #d32f2f;
+      text-align: center;
+      font-weight: bold;
+      margin-top: 15px;
+      display: none;
+    }
+    .loading {
+      text-align: center;
+      color: #666;
+      display: none;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>ফলাফল খুঁজুন</h2>
+    
+    <div class="search-box">
+      <input type="text" id="rollInput" placeholder="রোল নম্বর লিখুন...">
+      <button onclick="searchResult()">সার্চ</button>
+    </div>
+
+    <div id="loading" class="loading">ডাটা খোঁজা হচ্ছে...</div>
+    <div id="errorMsg" class="error-msg"></div>
+
+    <div id="resultContainer" class="result-container">
+      <div class="result-item">
+        <strong>নাম:</strong>
+        <span id="resName"></span>
+      </div>
+      <div class="result-item">
+        <strong>পিতার নাম:</strong>
+        <span id="resFather"></span>
+      </div>
+      <div class="result-item">
+        <strong>ফলাফল:</strong>
+        <span id="resStatus"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ আপনার Google Sheet-এর ID টি নিচে দিন
+    const SHEET_ID = '1qjaGbi87r7sguqeumdMiovQl6zCDGXHT2S-bxs-lwYA'; 
+    const SHEET_NAME = 'Sheet1'; // শীটের নাম (ডিফল্ট Sheet1)
+
+    async function searchResult() {
+      const rollInputValue = document.getElementById('rollInput').value.trim();
+      const loadingDiv = document.getElementById('loading');
+      const errorDiv = document.getElementById('errorMsg');
+      const resultDiv = document.getElementById('resultContainer');
+
+      // রিসেট ভিউ
+      errorDiv.style.display = 'none';
+      resultDiv.style.display = 'none';
+
+      if (!rollInputValue) {
+        errorDiv.innerText = 'অনুগ্রহ করে একটি রোল নম্বর লিখুন।';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      loadingDiv.style.display = 'block';
+
+      // Google Sheet থেকে JSON ডাটা ফেচ করার URL
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+      try {
+        const response = await fetch(url);
+        const text = await response.text();
+
+        // Google Viz response থেকে সংগৃহীত JSON রিড করা
+        const jsonText = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+        const data = JSON.parse(jsonText);
+
+        const rows = data.table.rows;
+        let matchFound = false;
+
+        for (let row of rows) {
+          // Column A = রোল, Column B = নাম, Column C = পিতার নাম, Column D = ফলাফল
+          const roll = row.c[0] ? String(row.c[0].v || row.c[0].f).trim() : '';
+          
+          if (roll === rollInputValue) {
+            const name = row.c[1] ? (row.c[1].v || '') : '';
+            const father = row.c[2] ? (row.c[2].v || '') : '';
+            const status = row.c[3] ? (row.c[3].v || '') : '';
+
+            document.getElementById('resName').innerText = name;
+            document.getElementById('resFather').innerText = father;
+            document.getElementById('resStatus').innerText = status;
+
+            resultDiv.style.display = 'block';
+            matchFound = true;
+            break;
+          }
+        }
+
+        if (!matchFound) {
+          errorDiv.innerText = 'এই রোল নম্বরের কোনো তথ্য পাওয়া যায়নি!';
+          errorDiv.style.display = 'block';
+        }
+
+      } catch (err) {
+        console.error(err);
+        errorDiv.innerText = 'ডাটা নিয়ে আসতে সমস্যা হয়েছে। Sheet ID টি সঠিক আছে কিনা যাচাই করুন।';
+        errorDiv.style.display = 'block';
+      } finally {
+        loadingDiv.style.display = 'none';
+      }
+    }
+  </script>
+
+</body>
+</html>
