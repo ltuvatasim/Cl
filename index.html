@@ -49,7 +49,7 @@
     input[type="text"]:focus {
       border-color: #1a73e8;
     }
-    button {
+    .btn {
       padding: 12px 20px;
       font-size: 16px;
       background-color: #1a73e8;
@@ -60,8 +60,16 @@
       font-weight: bold;
       transition: background-color 0.2s;
     }
-    button:hover {
+    .btn:hover {
       background-color: #1557b0;
+    }
+    .print-btn {
+      background-color: #28a745;
+      width: 100%;
+      margin-top: 15px;
+    }
+    .print-btn:hover {
+      background-color: #218838;
     }
     .result-container {
       margin-top: 20px;
@@ -74,9 +82,10 @@
       justify-content: space-between;
       margin-bottom: 12px;
       font-size: 16px;
-      padding: 8px 10px;
+      padding: 10px;
       background-color: #f8f9fa;
       border-radius: 4px;
+      border: 1px solid #eee;
     }
     .result-item strong {
       color: #555;
@@ -84,9 +93,6 @@
     .result-item span {
       font-weight: bold;
       color: #222;
-    }
-    .status-pass {
-      color: #2e7d32 !important;
     }
     .error-msg {
       color: #d32f2f;
@@ -101,22 +107,61 @@
       display: none;
       margin-top: 15px;
     }
+
+    /* 🖨️ প্রিন্ট করার সময় শুধু ফলাফল অংশ দেখানোর সিএসএস */
+    @media print {
+      body {
+        background-color: #fff;
+      }
+      .search-box, h2, .print-btn, .loading, .error-msg {
+        display: none !important;
+      }
+      .card {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+      .result-container {
+        display: block !important;
+        border-top: none;
+        padding-top: 0;
+      }
+      .printable-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+    }
+
+    .printable-header {
+      display: none;
+    }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h2>ফলাফল খুঁজুন</h2>
+    <h2>ফলাফল অনুসন্ধান</h2>
     
     <div class="search-box">
       <input type="text" id="rollInput" placeholder="রোল নম্বর লিখুন...">
-      <button onclick="searchResult()">সার্চ</button>
+      <button class="btn" onclick="searchResult()">সার্চ</button>
     </div>
 
     <div id="loading" class="loading">ডাটা খোঁজা হচ্ছে...</div>
     <div id="errorMsg" class="error-msg"></div>
 
     <div id="resultContainer" class="result-container">
+      <!-- প্রিন্ট করার সময় যে হেডারটি কাগজের ওপরে থাকবে -->
+      <div class="printable-header">
+        <h2 style="margin-bottom: 5px;">পরীক্ষার ফলাফল</h2>
+        <hr style="margin-bottom: 20px;">
+      </div>
+
+      <div class="result-item">
+        <strong>রোল নম্বর:</strong>
+        <span id="resRoll"></span>
+      </div>
       <div class="result-item">
         <strong>নাম:</strong>
         <span id="resName"></span>
@@ -129,13 +174,16 @@
         <strong>ফলাফল:</strong>
         <span id="resStatus"></span>
       </div>
+
+      <!-- প্রিন্ট বাটন -->
+      <button class="btn print-btn" onclick="window.print()">🖨️ প্রিন্ট করুন</button>
     </div>
   </div>
 
   <script>
     // ⚠️ আপনার Google Sheet-এর ID টি নিচে দিন
-    const SHEET_ID = '1qjaGbi87r7sguqeumdMiovQl6zCDGXHT2S-bxs-lwYA'; 
-    const SHEET_NAME = 'Sheet1'; // শীটের নাম (ডিফল্ট Sheet1)
+    const SHEET_ID = 'YOUR_SHEET_ID_HERE'; 
+    const SHEET_NAME = 'Sheet1'; 
 
     async function searchResult() {
       const rollInputValue = document.getElementById('rollInput').value.trim();
@@ -143,7 +191,6 @@
       const errorDiv = document.getElementById('errorMsg');
       const resultDiv = document.getElementById('resultContainer');
 
-      // রিসেট ভিউ
       errorDiv.style.display = 'none';
       resultDiv.style.display = 'none';
 
@@ -155,14 +202,12 @@
 
       loadingDiv.style.display = 'block';
 
-      // Google Sheet থেকে JSON ডাটা ফেচ করার URL
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`;
 
       try {
         const response = await fetch(url);
         const text = await response.text();
 
-        // Google Viz response থেকে সংগৃহীত JSON রিড করা
         const jsonText = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
         const data = JSON.parse(jsonText);
 
@@ -170,7 +215,6 @@
         let matchFound = false;
 
         for (let row of rows) {
-          // Column A = রোল, Column B = নাম, Column C = পিতার নাম, Column D = ফলাফল
           const roll = row.c[0] ? String(row.c[0].v || row.c[0].f).trim() : '';
           
           if (roll === rollInputValue) {
@@ -178,6 +222,7 @@
             const father = row.c[2] ? (row.c[2].v || '') : '';
             const status = row.c[3] ? (row.c[3].v || '') : '';
 
+            document.getElementById('resRoll').innerText = roll;
             document.getElementById('resName').innerText = name;
             document.getElementById('resFather').innerText = father;
             document.getElementById('resStatus').innerText = status;
